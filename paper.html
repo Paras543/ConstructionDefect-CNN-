@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reading Cracks in Concrete — A CNN for Structural Defect Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800;900&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600;8..60,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+
+  :root{
+    --bg: #edeeea;
+    --bg-panel: #f6f6f2;
+    --ink: #1e2124;
+    --ink-soft: #494e53;
+    --steel: #3c5a6b;
+    --steel-soft: #7f97a3;
+    --amber: #e2a83b;
+    --rust: #9c3b26;
+    --line: #c9c6bc;
+    --line-soft: #dedad0;
+    --stripe-a: #1e2124;
+    --stripe-b: #e2a83b;
+
+    --display: 'Big Shoulders Display', sans-serif;
+    --body: 'Source Serif 4', serif;
+    --mono: 'IBM Plex Mono', monospace;
+  }
+
+  *{ box-sizing: border-box; }
+
+  html{ scroll-behavior: smooth; }
+
+  body{
+    margin:0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: var(--steel); }
+
+  /* ---------- signature: hazard stripe divider ---------- */
+  .stripe{
+    height: 10px;
+    width: 100%;
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--stripe-a) 0px, var(--stripe-a) 14px,
+      var(--stripe-b) 14px, var(--stripe-b) 28px
+    );
+  }
+  .stripe.thin{ height:6px; }
+
+  /* ---------- hero ---------- */
+  .hero{
+    position: relative;
+    padding: 5.5rem 6vw 4.5rem;
+    background:
+      linear-gradient(180deg, rgba(30,33,36,0.04), rgba(30,33,36,0) 60%),
+      var(--bg);
+    overflow:hidden;
+  }
+  .hero::before{
+    content:"";
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(var(--line-soft) 1px, transparent 1px),
+      linear-gradient(90deg, var(--line-soft) 1px, transparent 1px);
+    background-size: 42px 42px;
+    opacity: 0.55;
+    mask-image: linear-gradient(180deg, black, transparent 85%);
+    pointer-events:none;
+  }
+  .hero-inner{ position:relative; max-width: 1180px; margin: 0 auto; }
+
+  .eyebrow{
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--rust);
+    display:flex; align-items:center; gap:0.6em;
+    margin-bottom: 1.4rem;
+  }
+  .eyebrow::before{
+    content:"";
+    width: 22px; height: 2px;
+    background: var(--rust);
+    display:inline-block;
+  }
+
+  h1.title{
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(2.6rem, 6vw, 5rem);
+    line-height: 0.98;
+    letter-spacing: -0.01em;
+    margin: 0 0 1.6rem 0;
+    max-width: 15ch;
+  }
+  h1.title em{
+    font-style: normal;
+    color: var(--steel);
+  }
+
+  .hero-grid{
+    display:grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 3rem;
+    align-items: end;
+    margin-top: 2.5rem;
+  }
+  .hero-abstract{
+    font-size: 1.08rem;
+    color: var(--ink-soft);
+    max-width: 56ch;
+  }
+  .hero-stat{
+    text-align: right;
+    border-left: 1px solid var(--line);
+    padding-left: 2rem;
+  }
+  .hero-stat .num{
+    font-family: var(--display);
+    font-weight: 900;
+    font-size: clamp(3rem, 7vw, 5.5rem);
+    line-height: 0.9;
+    color: var(--ink);
+  }
+  .hero-stat .num sup{ font-size: 0.4em; top:-0.6em; color: var(--steel);}
+  .hero-stat .cap{
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-soft);
+    margin-top: 0.4rem;
+  }
+
+  /* ---------- layout ---------- */
+  .page{
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 6vw;
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 4rem;
+  }
+
+  .sidebar{
+    padding-top: 4rem;
+  }
+  .sidebar-sticky{ position: sticky; top: 2.5rem; }
+
+  .meta-block{
+    margin-bottom: 2.2rem;
+    padding-bottom: 1.6rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .meta-block:last-child{ border-bottom: none; }
+  .meta-label{
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--steel);
+    margin-bottom: 0.5rem;
+  }
+  .meta-value{
+    font-family: var(--mono);
+    font-size: 0.88rem;
+    color: var(--ink);
+    line-height: 1.55;
+  }
+  .meta-value .dim{ color: var(--ink-soft); }
+
+  main{ padding: 4rem 0 5rem; min-width:0; }
+
+  section{ margin-bottom: 4.2rem; scroll-margin-top: 2rem; }
+
+  .section-head{
+    display:flex;
+    align-items: baseline;
+    gap: 1rem;
+    margin-bottom: 1.4rem;
+  }
+  .section-num{
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    color: var(--rust);
+  }
+  h2{
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 1.9rem;
+    letter-spacing: -0.005em;
+    margin: 0;
+    color: var(--ink);
+  }
+  h3{
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 1.25rem;
+    margin: 2rem 0 0.8rem;
+    color: var(--ink);
+  }
+
+  p{ margin: 0 0 1.1rem; max-width: 68ch; color: var(--ink-soft); }
+  p strong{ color: var(--ink); font-weight: 600; }
+  p.lede{ color: var(--ink); font-size: 1.08rem; }
+
+  .callout{
+    border-left: 3px solid var(--amber);
+    background: var(--bg-panel);
+    padding: 1rem 1.4rem;
+    font-size: 0.95rem;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 1.4rem 0;
+  }
+
+  /* ---------- pipeline diagram ---------- */
+  .pipeline{
+    display:flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 1.8rem 0 0.6rem;
+    border: 1px solid var(--line);
+    background: var(--bg-panel);
+  }
+  .pipe-step{
+    flex: 1 1 130px;
+    padding: 1.1rem 1rem;
+    border-right: 1px solid var(--line);
+    position: relative;
+  }
+  .pipe-step:last-child{ border-right:none; }
+  .pipe-step::after{
+    content: "→";
+    position: absolute;
+    right: -0.65em;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--steel);
+    font-size: 1rem;
+    z-index: 1;
+  }
+  .pipe-step:last-child::after{ content:""; }
+  .pipe-tag{
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--steel);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 0.3rem;
+  }
+  .pipe-name{
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 1.05rem;
+    margin-bottom: 0.2rem;
+  }
+  .pipe-desc{
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--ink-soft);
+    line-height: 1.4;
+  }
+
+  /* ---------- architecture blocks ---------- */
+  .arch{
+    display:flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 1.8rem 0;
+    max-width: 620px;
+  }
+  .arch-row{
+    display:flex;
+    align-items: center;
+    gap: 0.9rem;
+  }
+  .arch-block{
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    padding: 0.55rem 0.9rem;
+    background: var(--bg-panel);
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--steel);
+    flex: 1;
+    display:flex;
+    justify-content: space-between;
+    color: var(--ink);
+  }
+  .arch-block.pool{ border-left-color: var(--amber); color: var(--ink-soft); }
+  .arch-block.head{ border-left-color: var(--rust); }
+  .arch-block .dim{ color: var(--ink-soft); }
+  .arch-repeat{
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--steel-soft);
+    white-space: nowrap;
+    width: 3.2em;
+  }
+
+  /* ---------- stat strip ---------- */
+  .stat-strip{
+    display:grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--line);
+    margin: 1.6rem 0 2rem;
+  }
+  .stat-cell{
+    padding: 1.2rem 1.3rem;
+    border-right: 1px solid var(--line);
+  }
+  .stat-cell:last-child{ border-right:none; }
+  .stat-cell .n{
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 1.9rem;
+    color: var(--ink);
+    line-height: 1;
+  }
+  .stat-cell .l{
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 0.4rem;
+  }
+
+  /* ---------- tables ---------- */
+  table.data{
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 0.85rem;
+    width: 100%;
+    max-width: 620px;
+    margin: 1.4rem 0;
+  }
+  table.data th, table.data td{
+    text-align: right;
+    padding: 0.5rem 0.8rem;
+    border-bottom: 1px solid var(--line);
+  }
+  table.data th:first-child, table.data td:first-child{
+    text-align: left;
+    color: var(--ink);
+  }
+  table.data thead th{
+    color: var(--steel);
+    text-transform: uppercase;
+    font-size: 0.65rem;
+    letter-spacing: 0.05em;
+    border-bottom: 2px solid var(--ink);
+  }
+  table.data tr.total td{ color: var(--ink-soft); }
+  table.data tr.accent td{ font-weight:600; color: var(--ink); }
+  table.data tr.highlight td{ color: var(--rust); font-weight: 600; }
+
+  /* ---------- footer ---------- */
+  footer{
+    border-top: 1px solid var(--line);
+    padding: 2.4rem 6vw 3rem;
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+    display:flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  footer a{ color: var(--ink-soft); text-decoration: underline; text-underline-offset: 3px; }
+
+  @media (max-width: 880px){
+    .page{ grid-template-columns: 1fr; }
+    .sidebar{ padding-top: 2rem; }
+    .sidebar-sticky{ position: static; }
+    .hero-grid{ grid-template-columns: 1fr; }
+    .hero-stat{ text-align:left; border-left:none; padding-left:0; border-top:1px solid var(--line); padding-top:1.2rem; }
+    .stat-strip{ grid-template-columns: 1fr 1fr; }
+    .stat-cell:nth-child(2){ border-right:none; }
+    table.data{ font-size: 0.75rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior: auto; }
+  }
+</style>
+</head>
+<body>
+
+<div class="stripe"></div>
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="eyebrow">Structural Defect Detection · Computer Vision</div>
+    <h1 class="title">Reading Cracks in <em>Concrete</em> with a Convolutional Neural Network</h1>
+    <div class="hero-grid">
+      <p class="hero-abstract">
+        A compact CNN trained end-to-end to separate cracked from non-cracked concrete
+        across three surface types — decks, pavements, and walls. This paper walks through
+        the dataset, the model, and what the training run actually measured, including
+        where it struggled.
+      </p>
+      <div class="hero-stat">
+        <div class="num">89.9<sup>%</sup></div>
+        <div class="cap">Held-out test accuracy</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="stripe thin"></div>
+
+<div class="page">
+
+  <aside class="sidebar">
+    <div class="sidebar-sticky">
+
+      <div class="meta-block">
+        <div class="meta-label">Dataset</div>
+        <div class="meta-value">
+          Structural Defects Network<br>
+          <span class="dim">(concrete crack images)</span><br>
+          56,092 images · 3 surfaces
+        </div>
+      </div>
+
+      <div class="meta-block">
+        <div class="meta-label">Classes</div>
+        <div class="meta-value">
+          Cracked <span class="dim">— 8,484</span><br>
+          Non-cracked <span class="dim">— 47,608</span>
+        </div>
+      </div>
+
+      <div class="meta-block">
+        <div class="meta-label">Split</div>
+        <div class="meta-value">
+          Train 70% <span class="dim">/ 39,264</span><br>
+          Val 15% <span class="dim">/ 8,414</span><br>
+          Test 15% <span class="dim">/ 8,414</span><br>
+          <span class="dim">stratified by class</span>
+        </div>
+      </div>
+
+      <div class="meta-block">
+        <div class="meta-label">Model</div>
+        <div class="meta-value">
+          CrackCNN<br>
+          <span class="dim">3 conv blocks → FC(512) → 2</span>
+        </div>
+      </div>
+
+      <div class="meta-block">
+        <div class="meta-label">Training</div>
+        <div class="meta-value">
+          Adam · lr 1e-3<br>
+          batch 32 · 10 epochs<br>
+          cross-entropy loss
+        </div>
+      </div>
+
+      <div class="meta-block">
+        <div class="meta-label">Framework</div>
+        <div class="meta-value">PyTorch · torchvision</div>
+      </div>
+
+    </div>
+  </aside>
+
+  <main>
+
+    <section id="abstract">
+      <div class="section-head">
+        <span class="section-num">00</span>
+        <h2>Abstract</h2>
+      </div>
+      <p class="lede">
+        Manual crack inspection on bridge decks, pavements, and retaining walls is slow and
+        inconsistent between inspectors. This paper trains a small convolutional network to
+        classify concrete surface patches as cracked or non-cracked, using the public
+        <strong>Structural Defects Network (SDNET)</strong>-style dataset of 56,092 labeled images
+        spanning decks, walls, and pavements.
+      </p>
+      <p>
+        The model reaches <strong>89.9% accuracy</strong> on a held-out test set, but the headline
+        number hides an important detail: the dataset is heavily skewed toward non-cracked
+        patches, and the model's recall on the crack class itself is only 45%. Section 6 covers
+        this directly rather than around it.
+      </p>
+    </section>
+
+    <section id="dataset">
+      <div class="section-head">
+        <span class="section-num">01</span>
+        <h2>Dataset</h2>
+      </div>
+      <p>
+        Every image is a fixed-size patch of a concrete surface, labeled <em>Cracked</em> or
+        <em>Non-cracked</em>, and tagged with the surface it was taken from. Pavements make up
+        the largest share, followed by walls and then bridge decks.
+      </p>
+
+      <table class="data">
+        <thead>
+          <tr><th>Surface</th><th>Images</th><th>Share</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Pavements</td><td>24,334</td><td>43.4%</td></tr>
+          <tr><td>Walls</td><td>18,138</td><td>32.3%</td></tr>
+          <tr><td>Decks</td><td>13,620</td><td>24.3%</td></tr>
+          <tr class="accent"><td>Total</td><td>56,092</td><td>100%</td></tr>
+        </tbody>
+      </table>
+
+      <table class="data">
+        <thead>
+          <tr><th>Class</th><th>Images</th><th>Share</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Non-cracked</td><td>47,608</td><td>84.9%</td></tr>
+          <tr class="highlight"><td>Cracked</td><td>8,484</td><td>15.1%</td></tr>
+        </tbody>
+      </table>
+
+      <div class="callout">
+        Non-cracked patches outnumber cracked ones roughly <strong>5.6 to 1</strong>. Nothing in
+        the training loop corrects for this — no class weighting, no oversampling — which
+        matters again in Section 6.
+      </div>
+    </section>
+
+    <section id="preprocessing">
+      <div class="section-head">
+        <span class="section-num">02</span>
+        <h2>Preprocessing</h2>
+      </div>
+      <p>
+        Images are resized to a uniform 224×224 before entering the network. Training images
+        get light augmentation to reduce overfitting to camera angle and orientation; validation
+        and test images are only resized and normalized, so evaluation reflects the raw model.
+      </p>
+
+      <div class="pipeline">
+        <div class="pipe-step">
+          <div class="pipe-tag">01</div>
+          <div class="pipe-name">Resize</div>
+          <div class="pipe-desc">224 × 224 px, all splits</div>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-tag">02</div>
+          <div class="pipe-name">Flip + rotate</div>
+          <div class="pipe-desc">random h-flip, ±10°, train only</div>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-tag">03</div>
+          <div class="pipe-name">Tensor</div>
+          <div class="pipe-desc">PIL → torch.FloatTensor</div>
+        </div>
+        <div class="pipe-step">
+          <div class="pipe-tag">04</div>
+          <div class="pipe-name">Normalize</div>
+          <div class="pipe-desc">ImageNet mean / std</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="model">
+      <div class="section-head">
+        <span class="section-num">03</span>
+        <h2>Model — CrackCNN</h2>
+      </div>
+      <p>
+        A plain convolutional stack, built for a two-class problem rather than borrowed from a
+        pretrained backbone. Three convolutional blocks double the channel count each time and
+        halve the spatial size with max pooling, then a single hidden layer and a dropout of
+        0.5 feed the final classifier.
+      </p>
+
+      <div class="arch">
+        <div class="arch-row">
+          <div class="arch-block"><span>Conv2d 3 → 32, k3</span><span class="dim">224×224</span></div>
+          <div class="arch-repeat">×1</div>
+        </div>
+        <div class="arch-row">
+          <div class="arch-block pool"><span>ReLU · MaxPool2d 2</span><span class="dim">112×112</span></div>
+        </div>
+        <div class="arch-row">
+          <div class="arch-block"><span>Conv2d 32 → 64, k3</span><span class="dim">112×112</span></div>
+        </div>
+        <div class="arch-row">
+          <div class="arch-block pool"><span>ReLU · MaxPool2d 2</span><span class="dim">56×56</span></div>
+        </div>
+        <div class="arch-row">
+          <div class="arch-block"><span>Conv2d 64 → 128, k3</span><span class="dim">56×56</span></div>
+        </div>
+        <div class="arch-row">
+          <div class="arch-block pool"><span>ReLU · MaxPool2d 2</span><span class="dim">28×28</span></div>
+        </div>
+        <div class="arch-row">
+          <div class="arch-block head"><span>Flatten → Linear 512</span><span class="dim">128·28·28 → 512</span></div>
+        </div>
+        <div class="arch-row">
+          <div class="arch-block head"><span>Dropout 0.5 → Linear 2</span><span class="dim">512 → 2 logits</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="training">
+      <div class="section-head">
+        <span class="section-num">04</span>
+        <h2>Training</h2>
+      </div>
+      <p>
+        Optimized with Adam at a learning rate of 1e-3 for 10 epochs, batch size 32. Both loss
+        and accuracy were tracked on the training and validation splits after every epoch —
+        this is the exact log produced by that run.
+      </p>
+
+      <table class="data">
+        <thead>
+          <tr><th>Epoch</th><th>Train loss</th><th>Val loss</th><th>Train acc</th><th>Val acc</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>1</td><td>0.4337</td><td>0.4266</td><td>84.84%</td><td>84.88%</td></tr>
+          <tr><td>2</td><td>0.4024</td><td>0.3790</td><td>85.07%</td><td>86.46%</td></tr>
+          <tr><td>3</td><td>0.3620</td><td>0.3279</td><td>87.01%</td><td>88.15%</td></tr>
+          <tr><td>4</td><td>0.3362</td><td>0.3313</td><td>88.19%</td><td>88.33%</td></tr>
+          <tr><td>5</td><td>0.3237</td><td>0.3070</td><td>88.59%</td><td>89.20%</td></tr>
+          <tr><td>6</td><td>0.3217</td><td>0.3328</td><td>88.81%</td><td>88.35%</td></tr>
+          <tr><td>7</td><td>0.3118</td><td>0.2925</td><td>89.03%</td><td>89.92%</td></tr>
+          <tr><td>8</td><td>0.3010</td><td>0.2988</td><td>89.43%</td><td>89.55%</td></tr>
+          <tr><td>9</td><td>0.2961</td><td>0.2844</td><td>89.64%</td><td>89.84%</td></tr>
+          <tr class="accent"><td>10</td><td>0.2963</td><td>0.2838</td><td>89.68%</td><td>90.18%</td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        Validation loss tracks training loss closely and even dips below it at several epochs —
+        a sign the model isn't overfitting so much as it's running out of headroom on a
+        relatively shallow architecture. Accuracy climbs from 84.8% to 90.2% on validation
+        over the ten epochs, with most of the gain landing in the first four.
+      </p>
+    </section>
+
+    <section id="evaluation">
+      <div class="section-head">
+        <span class="section-num">05</span>
+        <h2>Evaluation</h2>
+      </div>
+      <p>
+        Final numbers come from the held-out test set — 8,414 images the model never saw during
+        training or validation.
+      </p>
+
+      <div class="stat-strip">
+        <div class="stat-cell"><div class="n">89.9%</div><div class="l">Test accuracy</div></div>
+        <div class="stat-cell"><div class="n">0.94</div><div class="l">F1 · non-cracked</div></div>
+        <div class="stat-cell"><div class="n">0.57</div><div class="l">F1 · cracked</div></div>
+        <div class="stat-cell"><div class="n">8,414</div><div class="l">Test images</div></div>
+      </div>
+
+      <h3>Confusion matrix</h3>
+      <table class="data">
+        <thead>
+          <tr><th></th><th>Predicted cracked</th><th>Predicted non-cracked</th><th>Row total</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Actual cracked</td><td>573</td><td>700</td><td>1,273</td></tr>
+          <tr><td>Actual non-cracked</td><td>149</td><td>6,992</td><td>7,141</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Classification report</h3>
+      <table class="data">
+        <thead>
+          <tr><th>Class</th><th>Precision</th><th>Recall</th><th>F1</th><th>Support</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Cracked</td><td>0.79</td><td>0.45</td><td>0.57</td><td>1,273</td></tr>
+          <tr><td>Non-cracked</td><td>0.91</td><td>0.98</td><td>0.94</td><td>7,141</td></tr>
+          <tr class="accent"><td>Accuracy</td><td></td><td></td><td>0.90</td><td>8,414</td></tr>
+          <tr class="total"><td>Macro avg</td><td>0.85</td><td>0.71</td><td>0.76</td><td>8,414</td></tr>
+          <tr class="total"><td>Weighted avg</td><td>0.89</td><td>0.90</td><td>0.89</td><td>8,414</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="discussion">
+      <div class="section-head">
+        <span class="section-num">06</span>
+        <h2>Discussion — the number that matters more than accuracy</h2>
+      </div>
+      <p>
+        89.9% accuracy looks strong until it's split by class. Of the 1,273 truly cracked test
+        images, the model only caught <strong>573</strong> — it missed 700, calling them clean.
+        On the majority class it's excellent: 6,992 of 7,141 non-cracked images correctly
+        identified. A model this confident on the wrong side of an inspection isn't a small
+        detail; a missed crack is the entire point of building this in the first place.
+      </p>
+      <p>
+        This is the direct fingerprint of the roughly 5.6-to-1 class imbalance from Section 1
+        flowing through, uncorrected, to the loss function. Cross-entropy without class weights
+        lets the network minimize loss by leaning on the majority class, and it does exactly that.
+      </p>
+      <p>
+        Reasonable next steps, in rough order of effort: weight the loss (or oversample the
+        crack class) so misses are penalized more heavily; add crack-preserving augmentation
+        (contrast, blur, JPEG noise) since hairline cracks are the failure mode; and compare
+        against a pretrained backbone — a ResNet or EfficientNet stem, fine-tuned — which
+        SDNET-style benchmarks typically report as recovering most of the missing crack recall.
+      </p>
+    </section>
+
+    <section id="conclusion">
+      <div class="section-head">
+        <span class="section-num">07</span>
+        <h2>Conclusion</h2>
+      </div>
+      <p>
+        A three-block CNN, trained from scratch for ten epochs, gets most of the way to a usable
+        crack classifier — strong on the easy majority class, weak on the class the whole task
+        exists to catch. That gap, not the top-line accuracy, is the honest measure of where this
+        model stands and what to fix next.
+      </p>
+    </section>
+
+  </main>
+</div>
+
+<div class="stripe thin"></div>
+
+<footer>
+  <div>Dataset: Structural Defects Network — Concrete Crack Images (Kaggle, aniruddhsharma)</div>
+  <div>Model &amp; training: PyTorch · CrackCNN · 10 epochs</div>
+</footer>
+
+</body>
+</html>
