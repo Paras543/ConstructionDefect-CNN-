@@ -105,3 +105,6 @@ Training/validation loss and accuracy curves are plotted at the end of the noteb
 ## License
 
 This project uses the SDNET2018 dataset, which is publicly available on Kaggle for research and educational use.
+
+## Read More on : https://majestic-trifle-f5f7e9.netlify.app
+
